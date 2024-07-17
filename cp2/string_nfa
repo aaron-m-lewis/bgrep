@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+import nfa as NFA
+import sys
+
+def main(string=sys.argv[1]):
+
+    single = NFA.string_nfa(string)
+    single.print_nfa()
+    
+if __name__ == '__main__':
+    main()
+

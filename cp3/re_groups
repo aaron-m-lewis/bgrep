@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+
+import nfa_module as nfa
+import sys
+#from collections import deque
+#import time
+#from trace_paths import trace
+#from get_groups import get_groups
+
+def main(regex=sys.argv[1]):
+    created_nfa = nfa.parse(regex)
+    if not created_nfa:
+        print("GOT NONE FROM nfa.parse(regex)")
+    accept, paths, end = created_nfa.match(sys.argv[2])
+    closed_groups = nfa.get_groups(end, paths)
+    if accept:
+        print('accept')
+    else:
+        print('reject')
+    for key, value in sorted(list(closed_groups.items())):
+        print(f'{key}:{value}')
+
+     
+if __name__ == '__main__':
+    main()
+

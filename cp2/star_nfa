@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+import nfa as NFA
+import sys
+
+def main(f1=sys.argv[1]):
+
+    #creates the individual NFA
+    n1 = NFA.NFA()
+    n1.read_nfa(f1)
+
+    star = NFA.star_nfa(n1)
+    star.print_nfa()
+
+
+if __name__ == '__main__':
+    main()
+

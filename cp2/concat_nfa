@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+import nfa as NFA
+import sys
+from collections import deque
+
+def main(f1=sys.argv[1], f2=sys.argv[2]):
+
+    #creates the individual NFAs
+    n1 = NFA.NFA()
+    n1.read_nfa(f1)
+    n2 = NFA.NFA()
+    n2.read_nfa(f2)
+
+
+    concat = NFA.concat_nfa(n1, n2)
+    concat.print_nfa()
+    #NFA.concat_nfa(n1, n2).print_nfa()
+
+
+if __name__ == '__main__':
+    main()
+

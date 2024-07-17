@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+import nfa_module as nfa
+import sys
+from collections import deque
+import time
+
+def main(regex=sys.argv[1]):
+    NFA = nfa.parse(regex)
+    user_input = [line.rstrip() for line in sys.stdin.readlines()]
+    for try_match in user_input:
+        if NFA.match(try_match)[0]:
+            print(try_match)
+    
+if __name__ == '__main__':
+    main()
+

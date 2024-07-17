@@ -1,0 +1,180 @@
+#!/usr/bin/env python3
+
+import nfa_module as nfa
+import sys
+
+def usage(status=""):
+    print(f'{status}')
+    sys.exit(-1)
+
+def sed_process(string: str, commands: list[str]):
+    command_index = 0
+    num_commands = len(commands)
+    loops_dict: {str: int} = {}
+    while (command_index < num_commands):
+        command = commands[command_index]
+        backloop, loop, string = sed_parse(command, string)
+        if loop:
+            if backloop:
+                command_index = loops_dict[loop]
+            elif loop in loops_dict:
+                break
+            else:
+                loops_dict[loop] = command_index
+        command_index += 1
+    return string
+
+
+def sed_replace(regex: str, string: str, replace: str):
+    NFA = nfa.parse(regex)
+    accept, paths, end = NFA.match(string)
+    orig_string = string
+    #print(f'REPLACE: {replace}, ACCEPT: {accept}, STRING: {string}')
+    if accept:
+        groups_dict = nfa.get_groups(end, paths)
+        string = ''
+        
+        skip = 0
+
+        for index, char in enumerate(replace):
+            if skip:
+                skip -= 1
+                continue
+            if char == '\\':
+                #print(f'CHAR: {replace[index + 1]}')
+                if replace[index + 1] == 'g':
+                    try:
+                        group = nfa.extract_numerical(replace[(index + 3):])
+                        if group in groups_dict:
+                            string += groups_dict[group]
+                        skip = len(group) + 3
+                    except:
+                        return orig_string
+                else:
+                    try:
+                        group = nfa.extract_numerical(replace[(index + 1):])
+                        #print(f'GROUP: {group}')
+                        if group in groups_dict:
+                            #print(f'GROUP: {group} GCHAR: {groups_dict[group]}')
+                            string += groups_dict[group]
+                        skip = len(group)
+                    except:
+                        return orig_string
+            else:
+                #print(f'CHAR: {char}')
+                string += char
+    return string
+
+
+def sed_backloop(loop: str, regex: str, string: str):
+    NFA = nfa.parse(regex)
+    #print(f'BACKLOOP REGEX: {regex}, STRING: {string} LOOP: {loop}')
+    accept, paths, end = NFA.match(string)
+    if accept:
+        return loop
+    else:
+        return ''
+
+def sed_parse(command: str, string: str):
+    
+    regex = ''
+    loop = ''
+    replace = ''
+    need_replace = False
+    backloop = False
+    error_return = (False, '', string)
+
+    match (command[0]):
+        case ':':
+            loop = command[1:]
+        case '/':
+            command = command[1:]
+            for index, char in enumerate(command):
+                if char == '/':
+                    regex = command[:index]
+                    try:
+                        if command[index + 1] == 'b':
+                            loop = command[(index + 2):]
+                            backloop = True
+                        else:
+                            return error_return
+                        break
+                    except:
+                        return error_return
+        case 's':
+            command = command[2:]
+            for index, char in enumerate(command):
+                if char == '/':
+                    regex = command[:index]
+                    substring = command[(index + 1):]
+                    for i, c in enumerate(substring):
+                        if c == '/':
+                            replace = command[(index + 1):(i + index + 1)]
+                            need_replace = True
+                            break
+                    break
+    #print(f'REGEX: {regex}, STRING: {string}')
+    if regex:
+        regex += '⊣'
+        if backloop:
+            loop = sed_backloop(loop, regex, string)
+        elif need_replace:
+            string = sed_replace(regex, string, replace)
+
+    return (backloop, loop, string)
+            
+    
+
+def main(arguments=sys.argv[1:]):
+    
+    #boolean flag to check for -f and -e modes so that the for loop properly handles input, i.e. expects a command after -e and a file name after -f
+    file_mode = False
+    command_mode = False
+
+    #initialize the string to hold the name of the command file if there is a -f flag
+    command_file = ''
+    
+    #initialize the string to hold the name of the string file if one is provided
+    string_file = ''
+
+    #array of all the sed commands provided
+    sed_commands = []
+
+    #loop through command line arguments
+    for argument in arguments:
+        match (argument[0]):
+            case '-':
+                match (argument):
+                    case '-f':
+                        file_mode = True
+                    case '-e':
+                        command_mode = True
+            case _:
+                if file_mode:
+                    command_file = argument
+                    file_mode = False
+                elif command_mode:
+                    sed_commands.append(argument)
+                    command_mode = False
+                else:
+                    string_file = argument
+    
+
+    if command_file:
+        for line in open(command_file).readlines():
+            sed_commands.append(line.rstrip())
+    if not sed_commands:
+        print(string)
+        return
+    
+    if string_file:
+        for line in open(string_file).readlines():
+            print(sed_process(line.rstrip(), sed_commands))
+    else:
+        for line in sys.stdin:
+            print(sed_process(line.rstrip(), sed_commands))
+
+if __name__ == '__main__':
+    main() 
+
+

@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+
+import sys
+import nfa_module as tm
+
+def main(fileName=sys.argv[1]):
+
+    #initialize the turing machine with the given file name
+    turing_machine = tm.TM()
+    turing_machine.read_tm(fileName)
+
+    #print(turing_machine.states)
+
+    alpha_string = '' #the alpha_string represents every symbol in the tape alphabet 
+    
+    for symbol in turing_machine.tape_alphabet:
+        alpha_string += f'{symbol}|' #go through the tape alphabet to initialize the alpha string
+
+    loop_check_string = alpha_string + '[|]|0|1|2|3|4|5|6|7|8|9' #the loop_check_string expands upon the alpha string by adding every other symbol that could appear on the tape except for ^
+    alpha_string = alpha_string[:-1] #trim the trailing | from the alpha string
+
+    #print(turing_machine.accept)
+    #print(turing_machine.reject)
+    
+    sed_commands = [f's/(({alpha_string})*)/^^[{turing_machine.start}]\\1_/',':loop', f's/^^(({loop_check_string})*)/^\\1/']
+    #the sed_commands list represents all of the created sed commands in the order they need to be executed in
+    #The list is initialized with a few sed commands that every conversion will have
+    #The first regex takes the input string, puts ^^ at the beginning, encloses the start state in [ ], and puts _ at the end
+    #The second initializes the loop that will contain every transition sed command
+    #The third just replaces the ^^ at the beginning with ^
+    #In general, ^ represents the front of the tape, and ^^ signifies that within the loop, the string has matched at least one of the regexes, this is used the check at the end of the loop if the string matched 0 regexes, in which case the machine rejects
+
+
+    for transition in turing_machine.transitions:
+        #print(f'FROM: {transition.from_state}, TO: {transition.to_state}, READING: {transition.reading}, WRITING: {transition.writing}, DIRECTION: {transition.direction}')
+
+        #initialize some strings
+        regex_front_of_tape = ''
+        regex_end_of_tape = ''
+        replace_front_of_tape = ''
+        replace_end_of_tape = ''
+        replace = ''
+        
+        read = f'[{transition.from_state}]{transition.reading}' #this regex represents reading the head
+        write_left = f'[{transition.to_state}]{transition.writing}' #this regex represents writing and moving left
+        write_right = f'{transition.writing}[{transition.to_state}]' #this regex represents writing and moving right
+        match_not_empty = f'({alpha_string}({alpha_string})*)' #this regex matches any string of tape symbols but does not match ""
+        match_any = f'(({alpha_string})*)' #this regex matches any string of tape symbols, including ""
+        match_front = f'{read}{match_not_empty}' #this regex is used to build the front of tape regex to handle that edge case.
+
+        regex = f'^*{match_any}({alpha_string}){read}{match_any}' #this is the default regex for any given transition
+
+        #These ifs tweak the regexes and add front of tape and/or end of tape regexes to handle edge cases, take a look at these for hopefully fixing the cases we are failing
+        if transition.direction == 'L': #if the transition is going left
+            regex_front_of_tape = f'^*{match_front}'
+            replace_front_of_tape = f'^^{write_left}\\1'
+            replace = f'^^\\1[{transition.to_state}]\\g<3>{transition.writing}\\4'
+        elif transition.direction == 'R':
+            regex_end_of_tape = f'^*{match_any}{read}'
+            replace_end_of_tape = f'^^\\1{write_right}_'
+            regex_front_of_tape = f'^*{read}{match_any}'
+            replace_front_of_tape = f'^^{write_right}\\1'
+            replace = f'^^\\1\\g<3>{write_right}\\4'
+            regex = f'^*{match_any}({alpha_string}){read}{match_any}'
+        if transition.to_state == turing_machine.accept:
+            replace = f'accept:\\1\\g<3>{transition.writing}\\4'
+            replace_front_of_tape = f'accept:{transition.writing}\\1'
+            replace_end_of_tape = f'accept:\\1{transition.writing}_'
+        elif transition.to_state == turing_machine.reject:
+            replace = 'reject'
+            replace_front_of_tape = 'reject'
+            replace_end_of_tape = 'reject'
+        #print(f'REGEXES: base: {regex} front: {regex_front_of_tape}, end: {regex_end_of_tape}, REPLACE: {replace}, TRANSITION: {transition.from_state} {transition.reading} {transition.to_state} {transition.writing} {transition.direction}') 
+        if regex_end_of_tape:
+            sed_commands.append('s/' + regex_end_of_tape + '/' + replace_end_of_tape + '/')
+        sed_commands.append('s/' + regex + '/' + replace + '/') #after looking at the transition, add the s/ command to the script
+        #if regex_front_of_tape and replace_end_of_tape:
+        #    sed_commands.append('s/' + regex_end_of_tape + '/' + replace_end_of_tape + '/')
+        if regex_front_of_tape:
+            sed_commands.append('s/' + regex_front_of_tape + '/' + replace_front_of_tape + '/')
+    
+    #these sed commands are always the last 2 in any created script
+    sed_commands.append(f's/^(({loop_check_string})*)/reject/') #check if there is only one ^, if so the string matched no regex, so reject
+    sed_commands.append(f'/^^(({loop_check_string})*)/bloop') #check if there are any ^^, if so, loop, if the string has been changed to accept or reject then the loop will exit and the machine will print this accept or reject status.
+    
+    #output_file = open('commands_output.txt', 'x')
+    for command in sed_commands:
+        print(command)
+    #print('\n'.join(sed_commands))
+
+if __name__ == '__main__':
+    main()

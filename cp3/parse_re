@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+
+import nfa_module as nfa
+import sys
+
+def main(regex=sys.argv[1]):
+    nfa.parse_string(regex) 
+
+if __name__ == '__main__':
+    main()
