@@ -10,4 +10,4 @@ The project passes all tests in `tests/` when run from the parent
 
 This project was made for an assignment in `ND CSE 30151: Theory of Computing`. 
 
-It was completed in a group by [Aaron Lewis](https://github.com/aaron-matthew-lewis) [Colson Wells](https://github.com/mudcario350).
+It was completed in a group by [Aaron Lewis](https://github.com/aaron-m-lewis) and [Colson Wells](https://github.com/mudcario350).
