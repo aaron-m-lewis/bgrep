@@ -1,6 +1,6 @@
 # bgrep
 
-A custom regular expression matcher coded in python
+\[WIP] A custom regular expression matcher coded in python
 
 See `doc/` for the project step pdf files
 
